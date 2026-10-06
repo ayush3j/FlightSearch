@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: flightsearch
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:flight_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: org.postgresql.Driver
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  jpa:
+    hibernate:
+      # The schema is owned by schema.sql, not by Hibernate. `validate` only checks
+      # that the Flight entity matches the real table - it never creates or drops.
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  sql:
+    init:
+      # Runs schema.sql on every boot (idempotent - CREATE TABLE/INDEX IF NOT
+      # EXISTS - runs BEFORE Hibernate validates, hence no
+      # defer-datasource-initialization). There is deliberately no data.sql anymore:
+      # it used to TRUNCATE and re-seed the flight table on every single restart,
+      # which would silently wipe out any flight added at runtime (e.g. via
+      # POST /flights). The app now just uses whatever is already in the table; see
+      # db/seed-data-reference.sql to reset a database back to the original seed set.
+      mode: always
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: flight-search-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: 100
+      session-timeout-ms: 10000
+    listener:
+      ack-mode: manual
+
+logging:
+  level:
+    com.ayush.flightsearch: DEBUG
+    # The SQL Hibernate actually fires...
+    org.hibernate.SQL: DEBUG
+    # ...and the parameters bound into it.
+    org.hibernate.orm.jdbc.bind: TRACE
+  pattern:
+    # [%-22thread] pads for alignment but never truncates - Tomcat names like
+    # "http-nio-8080-exec-10" carry their number at the END, which a %.22t would cut off.
+    console: "%d{HH:mm:ss.SSS} %-5level [%-22thread] %logger{36} - %msg%n"
