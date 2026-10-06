@@ -20,17 +20,15 @@ public class FlightEventConsumer {
             log.info("✓ Received Kafka message - Key: {}, Value: {}, Partition: {}, Offset: {}",
                 record.key(), record.value(), record.partition(), record.offset());
             log.info("Processing message");
+//            if ("FAIL_TEST".equals(record.value())) {
+//                throw new RuntimeException("Testing failure");
+//            }
+            acknowledgment.acknowledge();
 
-            // Simulate processing
-            throw new RuntimeException("Simulated processing failure");
-
+            log.info("✓ Offset acknowledged successfully");
         } catch (Exception e) {
             log.error("Error processing message: {}", e.getMessage());
             throw e;  // Re-throw so error handler retries
-        } finally {
-            // Only acknowledge after successful processing
-            // If exception is thrown, error handler will retry
-            // After max retries exhausted, message will be skipped
         }
     }
 

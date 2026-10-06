@@ -53,6 +53,20 @@ public class KafkaConfig {
     }
 
     @Bean
+    public DefaultErrorHandler kafkaErrorHandler(ProducerFactory<String, String> producerFactory) {
+        KafkaTemplate<String, String> kafkaTemplate = new KafkaTemplate<>(producerFactory);
+
+        DeadLetterPublishingRecoverer recoverer =
+                new DeadLetterPublishingRecoverer(kafkaTemplate);
+
+        FixedBackOff backOff = new FixedBackOff(2000L, 3L);
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
+        log.info("✓ Kafka Error Handler configured with 3 retries, 2000ms delay + DLT publishing");
+        log.info("✓ DLT topic naming: {topic-name}-dlt (hyphen not dot)");
+        return errorHandler;
+    }
+
+    @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
             ConsumerFactory<String, String> consumerFactory,
             DefaultErrorHandler errorHandler) {
@@ -64,14 +78,6 @@ public class KafkaConfig {
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
         log.info("✓ Kafka Listener Container Factory initialized with custom error handler");
         return factory;
-    }
-
-    @Bean
-    public DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<String,String> kafkaTemplate) {
-        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate);
-        FixedBackOff backOff = new FixedBackOff(2000L, 3L);
-        log.info("✓ Kafka Error Handler configured with 3 retries, 2000ms delay");
-        return new DefaultErrorHandler(recoverer,backOff);
     }
 
     @Bean
